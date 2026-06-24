@@ -54,3 +54,36 @@ add_custom_command(TARGET ${TARGET} POST_BUILD
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${TARGET}>
     COMMENT "Generating ${TARGET}.hex and ${TARGET}.bin"
 )
+
+# --- Optional clock diagnostic firmware ------------------------------------
+# Reports + measures the clock tree over UART. Not built by default:
+#   cmake --build build --target clock-report
+add_executable(clock-report EXCLUDE_FROM_ALL
+    src/startup_stm32h743.c
+    src/syscalls.c
+    src/uart.c
+    src/clock.c
+    test/clock_report.c
+)
+target_include_directories(clock-report PRIVATE include)
+target_compile_options(clock-report PRIVATE
+    ${CPU_FLAGS}
+    -Wall -Wextra
+    -ffunction-sections -fdata-sections
+    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Release>:-O2>
+)
+target_link_options(clock-report PRIVATE
+    ${CPU_FLAGS}
+    -T${LINKER_SCRIPT}
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,-Map=clock-report.map
+    -Wl,--print-memory-usage
+)
+set_target_properties(clock-report PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+add_custom_command(TARGET clock-report POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:clock-report> clock-report.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:clock-report>
+    COMMENT "Generating clock-report.hex"
+)
