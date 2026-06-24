@@ -1,25 +1,46 @@
 # stm32h743-lcd-touch
 
-A self-contained, bare-metal starting template for an **STM32H743IIT6** core
-board (`dkm1978/STM32H7IIT6-Core-board`). It boots the chip to 400 MHz, brings
-up the 32 MB external SDRAM, drives a 7" **1024×600 RGB565 LCD** over LTDC, and
-reads the **GT911 capacitive touch** controller over I²C.
+A self-contained, **bare-metal** starting template for an **STM32H743IIT6** core
+board (`dkm1978/STM32H7IIT6-Core-board`) driving a 7" capacitive-touch LCD.
 
-Out of the box `main()` shows an 8-bar color splash, then lets you drag a finger
-to draw on a black canvas. Use it as a clean base for your own H7 LCD/touch
-firmware — every peripheral is a small, standalone module you can keep or strip.
+It takes the chip from reset all the way to an interactive display: it raises the
+core to 400 MHz, brings up the 32 MB external SDRAM as a framebuffer, configures
+the LTDC to drive a **1024×600 RGB565** panel, and reads finger positions from a
+**GT911** capacitive-touch controller over I²C. Out of the box `main()` shows an
+8-bar color splash, then clears to black and lets you **drag a finger to draw**.
 
-**No STM32CubeMX, HAL, CMSIS, or vendor SDK** — the project ships its own minimal
-register header, startup/vector table, and linker script, so it builds from just
-the Arm GCC toolchain.
+The point of the repo is to be a *clean, honest base* for your own H7 LCD/touch
+firmware. Every peripheral is a small, standalone module with a tiny header —
+keep the ones you need, delete the rest. There is **no STM32CubeMX, HAL, CMSIS,
+or vendor SDK**: the project ships its own minimal register header, C
+startup/vector table, and linker script, so it builds from nothing but the Arm
+GCC toolchain.
+
+## What's brought up
+
+Each subsystem is one source file plus a header exposing a handful of functions:
+
+| Subsystem | What it does | Public API |
+| --- | --- | --- |
+| **Clock** (`clock.c`) | HSI → PLL to 400 MHz SYSCLK / 200 MHz HCLK / 100 MHz SDRAM, plus PLL3-R for the LTDC pixel clock. Keeps USART1 on HSI so the baud rate survives the switch. | `clock_init()`, `clock_delay_ms()` |
+| **SDRAM** (`sdram.c`) | FMC bring-up + JEDEC init for the 32 MB chip at `0xC0000000`; optional read/write self-test. | `sdram_init()`, `sdram_selftest()` |
+| **LCD** (`lcd.c`) | LTDC pins, controller, and a single RGB565 layer with the framebuffer in SDRAM; fill / dot / color-bar helpers and live timing re-tuning. | `lcd_init()`, `lcd_fill()`, `lcd_draw_dot()`, `lcd_test_pattern()`, `lcd_set_mode()` |
+| **Touch** (`touch.c`) | GT911 controller over a register-level I²C4 master; returns the first touch point in panel pixels. | `touch_init()`, `touch_read()` |
+| **UART** (`uart.c` + `syscalls.c`) | USART1 bring-up; `printf` is retargeted to the serial port so you get a bring-up log and `printf`-style debugging. | `uart_init()`, `uart_write()` |
+
+Boot sequence in `main()`: **UART → clock → SDRAM → LCD splash → touch-draw
+loop**. UART comes up first (on the 64 MHz HSI default) so every later step is
+observable on a serial terminal, and faults are caught by a `HardFault_Handler`
+that prints instead of silently parking.
 
 ## Target hardware
 
 - **MCU:** STM32H743IIT6 (Cortex-M7, 2 MB flash, 1 MB RAM, LQFP176)
 - **Clock:** 400 MHz SYSCLK / 200 MHz HCLK, PLLs driven from the **64 MHz HSI**
+  (no external crystal required)
 - **SDRAM:** 32 MB Winbond W9825G6KH on FMC bank 1 @ `0xC0000000`
-- **LCD:** 7" 1024×600 RGB565 panel on LTDC (backlight enable on PH6)
-- **Touch:** GT911 on hardware I²C4 (SCL=PD12, SDA=PD13), addr 0x5D
+- **LCD:** 7" 1024×600 RGB565 IPS panel on LTDC (backlight enable on PH6)
+- **Touch:** GT911 on hardware I²C4 (SCL=PD12, SDA=PD13, RST=PD11, INT=PH7), addr 0x5D
 - **Serial:** USART1, **PA9 = TX**, **PA10 = RX**, **115200 8N1**
 
 ## Prerequisites
@@ -69,7 +90,7 @@ terminal at 115200 you should see the bring-up log:
 | Path | Purpose |
 | --- | --- |
 | `src/main.c` | Entry point: clock → SDRAM → LCD splash → GT911 touch-draw loop |
-| `src/clock.c` | PLL config: 400 MHz SYSCLK + PLL3-R 25 MHz LTDC pixel clock |
+| `src/clock.c` | PLL config: 400 MHz SYSCLK + PLL3-R LTDC pixel clock |
 | `src/sdram.c` | FMC bring-up for the 32 MB external SDRAM @ `0xC0000000` |
 | `src/lcd.c` | LTDC + 1024×600 RGB565 panel; fill / dot / color-bar helpers |
 | `src/touch.c` | GT911 capacitive touch driver |
@@ -84,9 +105,19 @@ terminal at 115200 you should see the bring-up log:
 See [`CLAUDE.md`](CLAUDE.md) for the hard-won board specifics (exact pin maps,
 panel timing, and H7 gotchas).
 
+## Using it as a template
+
+- **Different panel?** Adjust `LCD_WIDTH`/`LCD_HEIGHT` and the timing in `lcd.c`;
+  `lcd_set_mode()` lets you re-tune sync/porches live while hunting the right mode.
+- **Don't need touch or the LCD?** Drop the file from `add_executable(...)` in
+  `CMakeLists.txt` and delete the module — nothing else depends on it.
+- **Different UART pins/peripheral?** Edit the GPIO AF setup in `src/uart.c`
+  (and the clock source if you move off HSI).
+- **Adding interrupts?** Extend the vector table in `src/startup_stm32h743.c` —
+  it intentionally defines only the 16 core exceptions.
+
 ## Next steps
 
 - Bring up the on-board **NOR flash** (not yet initialized).
-- Add a real framebuffer/graphics layer on top of `lcd.c`.
-- Move peripheral interrupts in by extending the vector table in
-  `src/startup_stm32h743.c`.
+- Add a real framebuffer/graphics layer (text, shapes) on top of `lcd.c`.
+- Move peripheral handling onto interrupts (e.g. the GT911 INT line on PH7).
