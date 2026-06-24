@@ -1,0 +1,13 @@
+# CMake build output
+/build/
+*.elf
+*.hex
+*.bin
+*.map
+*.o
+*.d
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
