@@ -268,6 +268,71 @@
 #define QSPI_FMODE_IND_READ  1U
 #define QSPI_FMODE_MEMMAP    3U
 
+/* --- SDMMC2 @ 0x48022400 (D2 / AHB2) -------------------------------------- *
+ * microSD slot. CK=PD6(AF11) CMD=PD7(AF11) D0=PB14 D1=PB15 D2=PB3 D3=PB4 (AF9).
+ * Kernel clock = pll1_q or pll2_r (D1CCIPR.SDMMCSEL); this project drives it
+ * from PLL2-R so clock.c (PLL1) is untouched. */
+#define SDMMC2_BASE   0x48022400UL
+#define SDMMC2_POWER  REG32(SDMMC2_BASE + 0x00)
+#define SDMMC2_CLKCR  REG32(SDMMC2_BASE + 0x04)
+#define SDMMC2_ARG    REG32(SDMMC2_BASE + 0x08)
+#define SDMMC2_CMD    REG32(SDMMC2_BASE + 0x0C)
+#define SDMMC2_RESP1  REG32(SDMMC2_BASE + 0x14)
+#define SDMMC2_RESP2  REG32(SDMMC2_BASE + 0x18)
+#define SDMMC2_RESP3  REG32(SDMMC2_BASE + 0x1C)
+#define SDMMC2_RESP4  REG32(SDMMC2_BASE + 0x20)
+#define SDMMC2_DTIMER REG32(SDMMC2_BASE + 0x24)
+#define SDMMC2_DLEN   REG32(SDMMC2_BASE + 0x28)
+#define SDMMC2_DCTRL  REG32(SDMMC2_BASE + 0x2C)
+#define SDMMC2_DCOUNT REG32(SDMMC2_BASE + 0x30)
+#define SDMMC2_STA    REG32(SDMMC2_BASE + 0x34)
+#define SDMMC2_ICR    REG32(SDMMC2_BASE + 0x38)
+#define SDMMC2_MASK   REG32(SDMMC2_BASE + 0x3C)
+#define SDMMC2_FIFO   REG32(SDMMC2_BASE + 0x80)
+
+#define RCC_AHB2ENR        REG32(RCC_BASE + 0xDC)
+#define RCC_AHB2ENR_SDMMC2EN (1U << 9)
+
+/* POWER */
+#define SDMMC_POWER_ON     (3U << 0)   /* PWRCTRL = 11 = powered on */
+/* CLKCR */
+#define SDMMC_CLKCR_WIDBUS_4 (1U << 14)
+#define SDMMC_CLKCR_HWFC_EN  (1U << 17) /* hardware flow control */
+/* CMD */
+#define SDMMC_CMD_CPSMEN     (1U << 12)
+#define SDMMC_CMD_CMDTRANS   (1U << 6)
+#define SDMMC_CMD_WAITRESP_SHORT (1U << 8)  /* 01 */
+#define SDMMC_CMD_WAITRESP_LONG  (3U << 8)  /* 11 */
+/* DCTRL */
+#define SDMMC_DCTRL_DTEN     (1U << 0)
+#define SDMMC_DCTRL_DTDIR_RX (1U << 1)  /* card -> host (read) */
+#define SDMMC_DCTRL_DBLOCK_512 (9U << 4) /* 2^9 = 512 */
+/* STA / ICR flags */
+#define SDMMC_STA_CCRCFAIL (1U << 0)
+#define SDMMC_STA_DCRCFAIL (1U << 1)
+#define SDMMC_STA_CTIMEOUT (1U << 2)
+#define SDMMC_STA_DTIMEOUT (1U << 3)
+#define SDMMC_STA_TXUNDERR (1U << 4)
+#define SDMMC_STA_RXOVERR  (1U << 5)
+#define SDMMC_STA_CMDREND  (1U << 6)
+#define SDMMC_STA_CMDSENT  (1U << 7)
+#define SDMMC_STA_DATAEND  (1U << 8)
+#define SDMMC_STA_DBCKEND  (1U << 10)
+#define SDMMC_STA_TXFIFOF  (1U << 16)
+#define SDMMC_STA_RXFIFOE  (1U << 19)
+#define SDMMC_STA_BUSYD0   (1U << 20)
+#define SDMMC_STA_BUSYD0END (1U << 21)
+#define SDMMC_ICR_STATIC   0x1FE00FFFU   /* clear all static flags */
+
+/* PLL2 (for the SDMMC kernel clock) */
+#define RCC_PLL2DIVR  REG32(RCC_BASE + 0x38) /* PLL2 N/P/Q/R */
+#define RCC_DIVM2_Pos     12   /* PLLCKSELR DIVM fields are at bits 4/12/20 */
+#define RCC_PLL2RGE_Pos   6
+#define RCC_DIVR2EN       (1U << 21)
+#define RCC_CR_PLL2ON     (1U << 26)
+#define RCC_CR_PLL2RDY    (1U << 27)
+#define RCC_SDMMCSEL_PLL2 (1U << 16)   /* D1CCIPR.SDMMCSEL: 1 = pll2_r_ck */
+
 /* --- Cortex-M7 core registers --------------------------------------------- */
 #define SCB_VTOR      REG32(0xE000ED08UL) /* vector table offset        */
 #define SCB_CPACR     REG32(0xE000ED88UL) /* coprocessor (FPU) access   */

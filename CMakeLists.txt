@@ -157,3 +157,71 @@ add_custom_command(TARGET qspi-selftest POST_BUILD
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:qspi-selftest>
     COMMENT "Generating qspi-selftest.hex"
 )
+
+# --- Optional microSD (SDMMC2) diagnostic ----------------------------------
+# Read-only: init the card, report type/capacity/CID, read block 0. Not default:
+#   cmake --build build --target sd-report
+add_executable(sd-report EXCLUDE_FROM_ALL
+    src/startup_stm32h743.c
+    src/syscalls.c
+    src/uart.c
+    src/clock.c
+    src/sd.c
+    test/sd_report.c
+)
+target_include_directories(sd-report PRIVATE include)
+target_compile_options(sd-report PRIVATE
+    ${CPU_FLAGS}
+    -Wall -Wextra
+    -ffunction-sections -fdata-sections
+    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Release>:-O2>
+)
+target_link_options(sd-report PRIVATE
+    ${CPU_FLAGS}
+    -T${LINKER_SCRIPT}
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,-Map=sd-report.map
+    -Wl,--print-memory-usage
+)
+set_target_properties(sd-report PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+add_custom_command(TARGET sd-report POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:sd-report> sd-report.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:sd-report>
+    COMMENT "Generating sd-report.hex"
+)
+
+# --- Optional microSD WRITE self-test (read-and-restore) -------------------
+# Validates write + multi-block by writing a pattern and restoring the original:
+#   cmake --build build --target sd-selftest
+add_executable(sd-selftest EXCLUDE_FROM_ALL
+    src/startup_stm32h743.c
+    src/syscalls.c
+    src/uart.c
+    src/clock.c
+    src/sd.c
+    test/sd_selftest.c
+)
+target_include_directories(sd-selftest PRIVATE include)
+target_compile_options(sd-selftest PRIVATE
+    ${CPU_FLAGS}
+    -Wall -Wextra
+    -ffunction-sections -fdata-sections
+    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Release>:-O2>
+)
+target_link_options(sd-selftest PRIVATE
+    ${CPU_FLAGS}
+    -T${LINKER_SCRIPT}
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,-Map=sd-selftest.map
+    -Wl,--print-memory-usage
+)
+set_target_properties(sd-selftest PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+add_custom_command(TARGET sd-selftest POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:sd-selftest> sd-selftest.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:sd-selftest>
+    COMMENT "Generating sd-selftest.hex"
+)
