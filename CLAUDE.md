@@ -91,6 +91,28 @@ The boot/runtime chain (understanding it requires reading several files together
   **hardware I2C4** (SCL=PD12, SDA=PD13, AF4 open-drain), addr **0x5D**, with
   RST=PD11 / INT=PH7. `i2c.c` is a small register-level I2C master (no HAL).
   `touch_read()` returns the first touch point in panel pixels.
+- **QSPI NOR flash** (`src/qspi.c`): on-board Winbond **W25Q128JV** (16 MB) on
+  **QUADSPI bank 1** (CLK=PB2 AF9, NCS=PB6 AF10, IO0=PF8/IO1=PF9 AF10,
+  IO2=PF7/IO3=PF6 AF9). Single-line indirect driver at ~25 MHz: JEDEC ID,
+  status, write-enable/erase/program/read, plus **memory-mapped mode** (the
+  device appears read-only at **`0x90000000`**, `qspi_memmap_read()` for
+  one-shot copies). `src/flash_image.c` is an end-to-end demo that stores an
+  RGB565 splash in the flash and blits it to the LCD from `0x90000000`. Two
+  `EXCLUDE_FROM_ALL` diagnostics exist: `qspi-report` (non-destructive ID) and
+  `qspi-selftest` (erase/program one scratch sector). Bring-up validated on
+  hardware (JEDEC ID `EF 40 18`).
+- **microSD** (`src/sd.c`): SD card on **hardware SDMMC2** (CK=PD6/CMD=PD7 AF11;
+  D0=PB14/D1=PB15/D2=PB3/D3=PB4 AF9). Bare-metal driver (no HAL): full init
+  (CMD0/CMD8/ACMD41/CMD2/CMD3/CMD9/CMD7/ACMD6), 4-bit bus, ~25 MHz, and
+  **single + multi-block read *and* write** via FIFO polling (CMD17/18/24/25,
+  CMD12 stop, CMD13 busy-poll after writes). Its kernel clock comes from
+  **PLL2-R = 100 MHz** (set up by `sd_clock_init()`), deliberately separate from
+  PLL1 so `clock.c` is untouched. Diagnostics (`EXCLUDE_FROM_ALL`): `sd-report`
+  (read card type/capacity/CID + block 0) and `sd-selftest` (read-and-restore
+  write test). H7 gotchas baked in: the SDMMC `WAITRESP` for R3 (ACMD41) must
+  ignore CRC; and **`CMDTRANS` auto-starts the DPSM**, so `DCTRL.DTEN` must
+  *not* be set manually for data commands. Validated on hardware (read a real
+  card's MBR `55 AA`; single + 4-block write/verify/restore all PASS).
 - **Memory map** (`linker/STM32H743IITX_FLASH.ld`): code/rodata in **FLASH**
   (`0x08000000`, 2 MB); `.data`/`.bss`/heap/stack in **DTCM** (`0x20000000`,
   128 KB), stack growing down from `_estack`. The **SDRAM at `0xC0000000`** is used
@@ -99,13 +121,16 @@ The boot/runtime chain (understanding it requires reading several files together
 - **`include/stm32h743_reg.h`** is hand-written and now covers RCC (incl. PLLs),
   PWR, FLASH, all GPIO ports, FMC SDRAM, LTDC, USART1, and core registers. When
   adding a peripheral, add its registers here (offsets per RM0433), or switch to
-  the official CMSIS headers. **Watch RCC ENR offsets** — APB3ENR is `0xE4`
-  (LTDC lives there); using `0xE8` (APB1LENR) silently leaves the LTDC unclocked.
+  the official CMSIS headers. It also now covers the QUADSPI controller.
+  **Watch RCC ENR offsets** — APB3ENR is `0xE4` (LTDC lives there); using `0xE8`
+  (APB1LENR) silently leaves the LTDC unclocked.
 
 ## Hardware not yet driven
 
-The on-board **NOR flash** is not yet initialized. (Clock, SDRAM, LCD, and
-capacitive touch are all up.)
+All the on-board peripherals are now driven: clock, SDRAM, LCD, capacitive
+touch, QSPI NOR flash, and the microSD card (read **and** write). Remaining
+gaps are MCU interfaces with no on-board device wired — **USB / Ethernet /
+DCMI** — whose pins are broken out on the headers but are unused.
 
 ## Growing the project
 

@@ -82,6 +82,10 @@ terminal at 115200 you should see the bring-up log:
 
 ```
 ==== STM32H743 LCD bring-up ====
+[touch] GT911 ID: 911
+[flash] W25Q JEDEC ID: EF 40 18
+[flash] stored image found -- loading from flash
+[flash] image displayed from 0x90001000 at (412,225)
 [boot] ready -- drag to draw.
 ```
 
@@ -89,21 +93,27 @@ terminal at 115200 you should see the bring-up log:
 
 | Path | Purpose |
 | --- | --- |
-| `src/main.c` | Entry point: clock → SDRAM → LCD splash → GT911 touch-draw loop |
+| `src/main.c` | Entry point: clock → SDRAM → LCD splash → flash-image → GT911 touch-draw loop |
 | `src/clock.c` | PLL config: 400 MHz SYSCLK + PLL3-R LTDC pixel clock |
 | `src/sdram.c` | FMC bring-up for the 32 MB external SDRAM @ `0xC0000000` |
-| `src/lcd.c` | LTDC + 1024×600 RGB565 panel; fill / dot / color-bar helpers |
+| `src/lcd.c` | LTDC + 1024×600 RGB565 panel; fill / dot / blit / color-bar helpers |
 | `src/touch.c` | GT911 capacitive touch driver |
 | `src/i2c.c` | Register-level I²C4 master (no HAL) |
+| `src/qspi.c` | QUADSPI driver for the 16 MB W25Q128JV NOR flash (read/erase/program + mem-mapped) |
+| `src/sd.c` | SDMMC2 microSD driver: init + single/multi-block read & write |
+| `src/flash_image.c` | Demo: store an RGB565 image in QSPI flash, show it from `0x90000000` |
 | `src/uart.c` | USART1 bring-up and blocking `uart_write()` |
 | `src/syscalls.c` | newlib stubs; `_write()` retargets `printf` to USART1 |
 | `src/startup_stm32h743.c` | Vector table, `Reset_Handler`, `SystemInit` (FPU/VTOR/clock) |
-| `include/stm32h743_reg.h` | Minimal register definitions (RCC/PWR/FMC/LTDC/GPIO/USART) |
+| `include/stm32h743_reg.h` | Minimal register definitions (RCC/PWR/FMC/LTDC/GPIO/USART/I2C/QUADSPI/SDMMC2) |
 | `linker/STM32H743IITX_FLASH.ld` | Memory map: code in FLASH, data/stack in DTCM |
 | `cmake/arm-none-eabi-gcc.cmake` | CMake toolchain file for arm-none-eabi |
+| `docs/BOARD_REFERENCE.md` | Full per-peripheral hardware reference (pin maps, timings, clocks) |
+| `docs/PORTING.md` | How to lift these drivers into another STM32H743 project |
 
-See [`CLAUDE.md`](CLAUDE.md) for the hard-won board specifics (exact pin maps,
-panel timing, and H7 gotchas).
+See [`CLAUDE.md`](CLAUDE.md) for the hard-won board specifics, and
+[`docs/BOARD_REFERENCE.md`](docs/BOARD_REFERENCE.md) for the full hardware
+reference (exact pin maps, panel timing, clocks, and H7 gotchas).
 
 ## Using it as a template
 
@@ -118,6 +128,11 @@ panel timing, and H7 gotchas).
 
 ## Next steps
 
-- Bring up the on-board **NOR flash** (not yet initialized).
+All on-board peripherals are up (clock, SDRAM, LCD, touch, QSPI NOR flash, and
+microSD read/write). Possible directions from here:
+
 - Add a real framebuffer/graphics layer (text, shapes) on top of `lcd.c`.
-- Move peripheral handling onto interrupts (e.g. the GT911 INT line on PH7).
+- Put a filesystem (e.g. FatFs) on top of the `sd.c` block driver.
+- Move peripheral handling onto interrupts (e.g. the GT911 INT line on PH7) —
+  extend the vector table in `src/startup_stm32h743.c` first.
+- SD high-speed modes (SDR50/104) or quad-mode (4-bit) QSPI reads for throughput.
