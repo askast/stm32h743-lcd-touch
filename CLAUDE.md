@@ -113,6 +113,16 @@ The boot/runtime chain (understanding it requires reading several files together
   ignore CRC; and **`CMDTRANS` auto-starts the DPSM**, so `DCTRL.DTEN` must
   *not* be set manually for data commands. Validated on hardware (read a real
   card's MBR `55 AA`; single + 4-block write/verify/restore all PASS).
+- **FatFs** (`third_party/fatfs/` + `src/fatfs_diskio.c`): ChaN's **FatFs
+  R0.15** vendored on top of the SD driver. `fatfs_diskio.c` is the diskio glue
+  (`disk_read`/`disk_write` → `sd_read_blocks`/`sd_write_blocks`, plus a fixed
+  `get_fattime`). Config (`ffconf.h`): code page **437**, `FF_USE_STRFUNC` on,
+  **long filenames** (`FF_USE_LFN 2`, stack work buffer; `ffunicode.c`
+  vendored), read-write. Diagnostic `fatfs-report`
+  (`EXCLUDE_FROM_ALL`) mounts the card and lists the root directory. The
+  vendored `ff.c` is compiled without `-Wextra` (see `CMakeLists.txt`).
+  Validated on hardware: mounted a real FAT32 card and enumerated it. See
+  `third_party/fatfs/README.md` for vendoring notes.
 - **Memory map** (`linker/STM32H743IITX_FLASH.ld`): code/rodata in **FLASH**
   (`0x08000000`, 2 MB); `.data`/`.bss`/heap/stack in **DTCM** (`0x20000000`,
   128 KB), stack growing down from `_estack`. The **SDRAM at `0xC0000000`** is used

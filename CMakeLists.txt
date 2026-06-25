@@ -225,3 +225,44 @@ add_custom_command(TARGET sd-selftest POST_BUILD
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:sd-selftest>
     COMMENT "Generating sd-selftest.hex"
 )
+
+# --- Optional FatFs-on-microSD diagnostic ----------------------------------
+# Mounts the card and lists the root directory (read-only). Not built by default:
+#   cmake --build build --target fatfs-report
+add_executable(fatfs-report EXCLUDE_FROM_ALL
+    src/startup_stm32h743.c
+    src/syscalls.c
+    src/uart.c
+    src/clock.c
+    src/sd.c
+    src/fatfs_diskio.c
+    third_party/fatfs/ff.c
+    third_party/fatfs/ffunicode.c
+    test/fatfs_report.c
+)
+target_include_directories(fatfs-report PRIVATE include third_party/fatfs)
+target_compile_options(fatfs-report PRIVATE
+    ${CPU_FLAGS}
+    -ffunction-sections -fdata-sections
+    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Release>:-O2>
+)
+# Our own sources stay -Wall -Wextra; the vendored FatFs core does not.
+set_source_files_properties(
+    src/fatfs_diskio.c test/fatfs_report.c
+    PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra"
+)
+target_link_options(fatfs-report PRIVATE
+    ${CPU_FLAGS}
+    -T${LINKER_SCRIPT}
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,-Map=fatfs-report.map
+    -Wl,--print-memory-usage
+)
+set_target_properties(fatfs-report PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+add_custom_command(TARGET fatfs-report POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:fatfs-report> fatfs-report.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:fatfs-report>
+    COMMENT "Generating fatfs-report.hex"
+)

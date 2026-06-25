@@ -101,6 +101,8 @@ terminal at 115200 you should see the bring-up log:
 | `src/i2c.c` | Register-level I²C4 master (no HAL) |
 | `src/qspi.c` | QUADSPI driver for the 16 MB W25Q128JV NOR flash (read/erase/program + mem-mapped) |
 | `src/sd.c` | SDMMC2 microSD driver: init + single/multi-block read & write |
+| `src/fatfs_diskio.c` | FatFs diskio glue → `sd.c` (+ `get_fattime`) |
+| `third_party/fatfs/` | Vendored FatFs R0.15 (FAT filesystem); see its `README.md` |
 | `src/flash_image.c` | Demo: store an RGB565 image in QSPI flash, show it from `0x90000000` |
 | `src/uart.c` | USART1 bring-up and blocking `uart_write()` |
 | `src/syscalls.c` | newlib stubs; `_write()` retargets `printf` to USART1 |
@@ -132,7 +134,8 @@ All on-board peripherals are up (clock, SDRAM, LCD, touch, QSPI NOR flash, and
 microSD read/write). Possible directions from here:
 
 - Add a real framebuffer/graphics layer (text, shapes) on top of `lcd.c`.
-- Put a filesystem (e.g. FatFs) on top of the `sd.c` block driver.
+- FatFs (R0.15) is already wired onto `sd.c` — see the `fatfs-report` target.
+  Next: enable long filenames (LFN) or `f_mkfs` formatting.
 - Move peripheral handling onto interrupts (e.g. the GT911 INT line on PH7) —
   extend the vector table in `src/startup_stm32h743.c` first.
 - SD high-speed modes (SDR50/104) or quad-mode (4-bit) QSPI reads for throughput.

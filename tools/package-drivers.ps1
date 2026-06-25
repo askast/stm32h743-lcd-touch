@@ -44,6 +44,13 @@ $drivers = @(
     'src/qspi.c',   'include/qspi.h',
     'src/sd.c',     'include/sd.h'
 )
+# FatFs filesystem (vendored) + its glue to sd.c
+$fatfs = @(
+    'third_party/fatfs/ff.c',          'third_party/fatfs/ff.h',
+    'third_party/fatfs/ffconf.h',      'third_party/fatfs/diskio.h',
+    'third_party/fatfs/ffunicode.c',   'third_party/fatfs/README.md',
+    'src/fatfs_diskio.c'
+)
 $docs = @(
     'docs/BOARD_REFERENCE.md',
     'docs/PORTING.md'
@@ -52,10 +59,10 @@ $examples = @(
     'src/flash_image.c', 'include/flash_image.h',
     'test/qspi_report.c', 'test/qspi_selftest.c',
     'test/sd_report.c',   'test/sd_selftest.c',
-    'test/clock_report.c'
+    'test/fatfs_report.c', 'test/clock_report.c'
 )
 
-$files = $core + $drivers + $docs
+$files = $core + $drivers + $fatfs + $docs
 if ($IncludeExamples) { $files += $examples }
 
 # --- Stage (clean copy preserving relative paths) ------------------------------

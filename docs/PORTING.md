@@ -41,6 +41,7 @@ uart.c (+ syscalls.c)  <- debug printf over USART1
 | **Touch (GT911)** | `src/touch.c`, `include/touch.h`, `src/i2c.c`, `include/i2c.h` | reg, gpio_af, clock, uart |
 | **QSPI NOR flash** | `src/qspi.c`, `include/qspi.h` | reg, gpio_af, clock |
 | **microSD (SDMMC2)** | `src/sd.c`, `include/sd.h` | reg, gpio_af, clock |
+| **FatFs (filesystem)** | `third_party/fatfs/{ff.c,ff.h,ffconf.h,diskio.h}`, `src/fatfs_diskio.c` | sd (block driver) |
 | *Example* | `src/flash_image.c`, `include/flash_image.h`, `test/*_report.c`, `test/*_selftest.c` | the modules they exercise |
 
 ## Integration steps
@@ -105,6 +106,14 @@ sd_write_blocks(lba, buf, count);                 // CMD25
 lcd_init();
 lcd_fill(RGB565(0,0,0));
 lcd_blit(x, y, w, h, pixels);                     // RGB565 bitmap -> framebuffer
+
+/* FatFs on the SD card (add third_party/fatfs to the include path; compile
+   ff.c + src/fatfs_diskio.c). disk_initialize() drives sd_clock_init/sd_init. */
+FATFS fs; FIL fp; UINT bw;
+f_mount(&fs, "", 1);
+f_open(&fp, "LOG.TXT", FA_WRITE | FA_CREATE_ALWAYS);
+f_write(&fp, "hello\n", 6, &bw);
+f_close(&fp);
 ```
 
 ## Clock budget if you take everything
