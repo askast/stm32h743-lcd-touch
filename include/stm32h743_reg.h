@@ -223,6 +223,51 @@
 #define I2C_ICR_NACKCF  (1U << 4)
 #define I2C_ICR_STOPCF  (1U << 5)
 
+/* --- QUADSPI @ 0x52005000 ------------------------------------------------- */
+/* On-board Winbond W25Q128JV serial NOR (16 MB) hangs off bank 1:
+ *   CLK=PB2(AF9) NCS=PB6(AF10) IO0=PF8(AF10) IO1=PF9(AF10) IO2=PF7(AF9) IO3=PF6(AF9).
+ * Memory-mapped (mem-map mode only) at 0x90000000. Kernel clock = rcc_hclk3. */
+#define QUADSPI_BASE  0x52005000UL
+#define QUADSPI_CR    REG32(QUADSPI_BASE + 0x00) /* control                    */
+#define QUADSPI_DCR   REG32(QUADSPI_BASE + 0x04) /* device config (FSIZE/CSHT) */
+#define QUADSPI_SR    REG32(QUADSPI_BASE + 0x08) /* status                     */
+#define QUADSPI_FCR   REG32(QUADSPI_BASE + 0x0C) /* flag clear                 */
+#define QUADSPI_DLR   REG32(QUADSPI_BASE + 0x10) /* data length (bytes-1)      */
+#define QUADSPI_CCR   REG32(QUADSPI_BASE + 0x14) /* communication config       */
+#define QUADSPI_AR    REG32(QUADSPI_BASE + 0x18) /* address                    */
+#define QUADSPI_DR    REG32(QUADSPI_BASE + 0x20) /* data (byte-access the FIFO)*/
+
+#define RCC_AHB3ENR_QSPIEN (1U << 14)
+
+#define QSPI_CR_EN            (1U << 0)
+#define QSPI_CR_ABORT         (1U << 1)
+#define QSPI_CR_PRESCALER_Pos 24
+
+#define QSPI_DCR_CSHT_Pos  8
+#define QSPI_DCR_FSIZE_Pos 16
+
+#define QSPI_SR_TEF  (1U << 0)   /* transfer error    */
+#define QSPI_SR_TCF  (1U << 1)   /* transfer complete */
+#define QSPI_SR_FTF  (1U << 2)   /* FIFO threshold    */
+#define QSPI_SR_BUSY (1U << 5)
+
+#define QSPI_FCR_CTEF (1U << 0)
+#define QSPI_FCR_CTCF (1U << 1)
+
+#define QSPI_CCR_IMODE_Pos  8    /* instruction line count */
+#define QSPI_CCR_ADMODE_Pos 10
+#define QSPI_CCR_ADSIZE_Pos 12
+#define QSPI_CCR_DCYC_Pos   18   /* dummy cycles           */
+#define QSPI_CCR_DMODE_Pos  24   /* data line count        */
+#define QSPI_CCR_FMODE_Pos  26   /* functional mode        */
+
+#define QSPI_MODE_NONE       0U  /* phase absent           */
+#define QSPI_MODE_SINGLE     1U  /* one line               */
+#define QSPI_MODE_QUAD       3U  /* four lines             */
+#define QSPI_FMODE_IND_WRITE 0U
+#define QSPI_FMODE_IND_READ  1U
+#define QSPI_FMODE_MEMMAP    3U
+
 /* --- Cortex-M7 core registers --------------------------------------------- */
 #define SCB_VTOR      REG32(0xE000ED08UL) /* vector table offset        */
 #define SCB_CPACR     REG32(0xE000ED88UL) /* coprocessor (FPU) access   */

@@ -22,6 +22,8 @@ add_executable(${TARGET}
     src/lcd.c
     src/i2c.c
     src/touch.c
+    src/qspi.c
+    src/flash_image.c
     src/main.c
 )
 
@@ -86,4 +88,72 @@ add_custom_command(TARGET clock-report POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:clock-report> clock-report.hex
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:clock-report>
     COMMENT "Generating clock-report.hex"
+)
+
+# --- Optional QSPI flash diagnostic ----------------------------------------
+# Non-destructively reads the W25Q128JV JEDEC ID over UART. Not built by default:
+#   cmake --build build --target qspi-report
+add_executable(qspi-report EXCLUDE_FROM_ALL
+    src/startup_stm32h743.c
+    src/syscalls.c
+    src/uart.c
+    src/clock.c
+    src/qspi.c
+    test/qspi_report.c
+)
+target_include_directories(qspi-report PRIVATE include)
+target_compile_options(qspi-report PRIVATE
+    ${CPU_FLAGS}
+    -Wall -Wextra
+    -ffunction-sections -fdata-sections
+    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Release>:-O2>
+)
+target_link_options(qspi-report PRIVATE
+    ${CPU_FLAGS}
+    -T${LINKER_SCRIPT}
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,-Map=qspi-report.map
+    -Wl,--print-memory-usage
+)
+set_target_properties(qspi-report PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+add_custom_command(TARGET qspi-report POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:qspi-report> qspi-report.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:qspi-report>
+    COMMENT "Generating qspi-report.hex"
+)
+
+# --- Optional QSPI flash SELF-TEST (destructive) ---------------------------
+# Erases+reprograms ONE 4KB sector to verify the full data path. Not by default:
+#   cmake --build build --target qspi-selftest
+add_executable(qspi-selftest EXCLUDE_FROM_ALL
+    src/startup_stm32h743.c
+    src/syscalls.c
+    src/uart.c
+    src/clock.c
+    src/qspi.c
+    test/qspi_selftest.c
+)
+target_include_directories(qspi-selftest PRIVATE include)
+target_compile_options(qspi-selftest PRIVATE
+    ${CPU_FLAGS}
+    -Wall -Wextra
+    -ffunction-sections -fdata-sections
+    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Release>:-O2>
+)
+target_link_options(qspi-selftest PRIVATE
+    ${CPU_FLAGS}
+    -T${LINKER_SCRIPT}
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,-Map=qspi-selftest.map
+    -Wl,--print-memory-usage
+)
+set_target_properties(qspi-selftest PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+add_custom_command(TARGET qspi-selftest POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:qspi-selftest> qspi-selftest.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:qspi-selftest>
+    COMMENT "Generating qspi-selftest.hex"
 )

@@ -37,4 +37,8 @@ void lcd_test_pattern(void);
 /* Draw a small filled square (radius 4) centered at (cx, cy). */
 void lcd_draw_dot(uint16_t cx, uint16_t cy, uint16_t color);
 
+/* Copy a w x h RGB565 bitmap (row-major, `src[row*w + col]`) into the
+ * framebuffer with its top-left at (x, y). Clipped to the panel edges. */
+void lcd_blit(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t *src);
+
 #endif /* LCD_H */

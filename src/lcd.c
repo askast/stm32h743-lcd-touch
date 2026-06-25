@@ -135,6 +135,19 @@ void lcd_draw_dot(uint16_t cx, uint16_t cy, uint16_t color)
     }
 }
 
+void lcd_blit(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t *src)
+{
+    for (uint16_t row = 0; row < h; row++) {
+        uint32_t py = (uint32_t)y + row;
+        if (py >= LCD_HEIGHT) break;
+        for (uint16_t col = 0; col < w; col++) {
+            uint32_t px = (uint32_t)x + col;
+            if (px >= LCD_WIDTH) continue;
+            g_fb[py * LCD_WIDTH + px] = src[(uint32_t)row * w + col];
+        }
+    }
+}
+
 void lcd_test_pattern(void)
 {
     static const uint16_t bars[8] = {

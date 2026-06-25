@@ -5,6 +5,8 @@
 #include "sdram.h"
 #include "lcd.h"
 #include "touch.h"
+#include "qspi.h"
+#include "flash_image.h"
 
 /* Report faults over UART instead of silently parking (handy during bring-up). */
 void HardFault_Handler(void)
@@ -34,6 +36,19 @@ int main(void)
 
     /* GT911 capacitive touch: drag a finger to draw white dots. */
     touch_init();
+
+    /* QSPI NOR flash (W25Q128JV, 16 MB). Report identity, then store + show a
+     * splash image straight from the flash (first boot writes it; later boots
+     * just load it via memory-mapped reads). */
+    qspi_init();
+    uint8_t fid[3];
+    if (qspi_read_jedec_id(fid) == 0)
+        printf("[flash] W25Q JEDEC ID: %02X %02X %02X\r\n", fid[0], fid[1], fid[2]);
+    else
+        printf("[flash] QSPI not responding\r\n");
+
+    flash_image_show();
+
     printf("[boot] ready -- drag to draw.\r\n");
 
     for (;;) {
