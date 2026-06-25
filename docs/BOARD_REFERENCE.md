@@ -318,6 +318,10 @@ read and write**.
 - **Diagnostics:** `sd-report` (read type/capacity/CID + block 0, `55 AA` check)
   and `sd-selftest` (read-and-restore single + 4-block write test). Both
   `EXCLUDE_FROM_ALL`; validated on hardware against a real ~8 GB SDHC card.
+- **Filesystem:** ChaN's **FatFs R0.15** is vendored on top of this driver
+  (`third_party/fatfs/` + `src/fatfs_diskio.c`); code page 437, long filenames,
+  read-write. Diagnostic `fatfs-report` mounts the card and lists the root dir.
+  See `third_party/fatfs/README.md`.
 - **Not yet:** high speed / SDR50/104, CMD23 predefined block count, SDIO.
 
 ---
