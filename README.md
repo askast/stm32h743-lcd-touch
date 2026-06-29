@@ -1,4 +1,5 @@
 # stm32h743-lcd-touch
+<img width="1652" height="1048" alt="Media (8)" src="https://github.com/user-attachments/assets/45c14c94-c481-468e-ac5d-af73f974ac2a" />
 
 A self-contained, **bare-metal** starting template for an **STM32H743IIT6** core
 board (`dkm1978/STM32H7IIT6-Core-board`) driving a 7" capacitive-touch LCD.
